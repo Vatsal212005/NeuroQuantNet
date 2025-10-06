@@ -257,25 +257,6 @@ for name, vals, ylabel in [
     plt.close()
 ```
 
----
-
-## Reproducibility Notes
-
-- Splitting is drug aware, per drug indices, with a fixed seed.  
-- Metrics include MAE, RMSE, R², averaged over all test edges.  
-- Quantum backend uses `default.qubit` by default on Windows. If `lightning.qubit` is available and stable, the scripts will report it.  
-- Performance variance is expected with qubit count, circuit depth, and batch size. On some machines, a smaller batch improves stability of the quantum layer.
-
----
-
-## Troubleshooting on Windows
-
-- If `torch.compile` triggers a Triton error, add `--no_compile` on training commands.  
-- If `torch-scatter` or similar packages fail to build, proceed without them. The core pipeline in this repo does not require those compiled extensions.  
-- PowerShell multiline commands use backticks. To avoid shell issues, prefer single line commands as shown above.
-
----
-
 ## Citation
 
 If you use this code or ideas in academic work, you can cite this repository informally as:
