@@ -1,0 +1,23 @@
+echo "
+# Ignore raw and processed data
+data/raw/*
+data/processed/*
+!data/README.md
+
+# Ignore model checkpoints and logs
+checkpoints/
+outputs/
+*.ckpt
+*.pt
+*.pth
+*.log
+
+# Ignore Python venvs and cache
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Ignore notebook checkpoints
+.ipynb_checkpoints/
+" > .gitignore
