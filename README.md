@@ -7,8 +7,6 @@ The project includes three trained configurations:
 2. **Hybrid quantum model, non fine tuned**, classical embeddings learned jointly with a quantum head.  
 3. **Hybrid quantum model, fine tuned**, quantum head trained on top of a baseline, with optional embedding unfreezing.
 
-No future scope section is included, by request.
-
 ---
 
 ## Highlights
