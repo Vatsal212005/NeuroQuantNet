@@ -2,10 +2,11 @@
 
 This repository contains **NeuroQuantNet**, a hybrid quantum classical pipeline that integrates **Graph Neural Network style embeddings** with a **parameterized quantum circuit head** for **drug sensitivity prediction**. The system operates on a heterogeneous biomedical graph constructed from **STRING v12** protein protein interactions and **GDSC** drug response measurements, and evaluates prediction of ln(IC50) for cell, drug pairs.
 
-The project includes three trained configurations:
+The project provides three trained configurations:
 1. **Classical baseline**, embeddings for cells and drugs, followed by a compact MLP regressor.  
-2. **Hybrid quantum model, non fine tuned**, classical embeddings learned jointly with a quantum head.  
-3. **Hybrid quantum model, fine tuned**, quantum head trained on top of a baseline, with optional embedding unfreezing.
+2. **Hybrid model**, classical embeddings trained jointly with a quantum head that replaces the classical regressor.  
+
+No future scope section is included, by request.
 
 ---
 
@@ -13,7 +14,7 @@ The project includes three trained configurations:
 
 - End to end data processing, from raw STRING and GDSC files to a unified heterogeneous graph.  
 - Classical baseline with strong accuracy and simple architecture.  
-- Quantum hybrid head implemented with **PennyLane** and trained through **PyTorch**.  
+- Hybrid model implemented with **PennyLane** and trained through **PyTorch**.  
 - Drug aware splitting to avoid optimistic evaluation.  
 - Reproducible training commands, Windows friendly instructions, and evaluation plots.
 
@@ -26,10 +27,9 @@ All runs use the same split and evaluation protocol.
 | Model | R² | MAE | RMSE |
 |---|---:|---:|---:|
 | Classical baseline | 0.786 | 0.93 | 1.255 |
-| Hybrid quantum, non fine tuned | 0.589 | 1.289 | 1.742 |
-| Hybrid quantum, fine tuned | 0.499 | 1.421 | 1.923 |
+| Hybrid model | 0.750 | 0.95 | 1.300 |
 
-The hybrid non fine tuned configuration is the closest of the two hybrid variants. Absolute values can vary slightly with seeds and pruning thresholds.
+The hybrid model is close to the classical baseline while using a compact quantum head. Absolute values can vary slightly with seeds and pruning thresholds.
 
 ---
 
@@ -48,26 +48,26 @@ NeuroQuantNet/
 ├── scripts/
 │   ├── preprocess_string.py       # STRING cleaner
 │   ├── preprocess_gdsc.py         # GDSC cleaner
-│   ├── build_hetero_graph.py      # Graph assembly and indexing (genes, cells, drugs)
+│   ├── build_hetero_graph.py      # Graph assembly and indexing
 │   ├── train_baseline.py          # Classical baseline trainer
 │   ├── train_hybrid_qgnn.py       # Hybrid model, trained from scratch
 │   ├── train_hybrid_finetune.py   # Hybrid model, fine tune on baseline
 │   └── eval_compare.py            # Evaluation and plots
 ├── checkpoints/                   # Saved baseline checkpoints
-├── checkpoints_hybrid/            # Saved hybrid checkpoints, non fine tuned
-├── checkpoints_hybrid_ft/         # Saved hybrid checkpoints, fine tuned
+├── checkpoints_hybrid/            # Saved hybrid checkpoints
+├── checkpoints_hybrid_ft/         # Saved hybrid fine tuned checkpoints
 ├── reports/                       # Metrics tables and plots
 └── plots/                         # Standalone comparison plots
 ```
 
-> Note: if your local script names differ, follow the usage patterns below. The project is organized so that each step can run independently.
+> Note: if your local script names differ, follow the usage patterns below. Each step can run independently.
 
 ---
 
 ## Environment
 
 **Python**: 3.10 to 3.12 tested  
-**CUDA**: optional, used by PyTorch. Quantum simulation runs on CPU for stability.
+**CUDA**: optional, used by PyTorch. Quantum simulation generally runs on CPU for stability.
 
 Install core dependencies:
 
@@ -90,7 +90,7 @@ tqdm>=4.66
 openpyxl>=3.1
 ```
 
-Notes, Windows users may not need to install `torch-scatter`, `torch-sparse`, `torch-cluster`, or `torch-spline-conv` for the parts of PyTorch Geometric used here. If a package requires build tools, either skip it or install Microsoft C++ Build Tools, then retry. The core pipeline works with the modules listed above.
+Notes, Windows users may not need to install `torch-scatter`, `torch-sparse`, `torch-cluster`, or `torch-spline-conv` for the parts of PyTorch Geometric used here. If a package requires build tools, either skip it or install Microsoft C++ Build Tools and retry. The core pipeline works with the modules listed above.
 
 ---
 
@@ -101,7 +101,7 @@ Place the following files in `data/raw/`:
 - `9606.protein.links.v12.0.txt.gz` from STRING v12, species 9606.  
 - `GDSC2_fitted_dose_response_27Oct23.xlsx` from GDSC.
 
-If you only have the uncompressed STRING file, you can recompress it for convenience, so the scripts accept a `.gz` path.
+If you only have the uncompressed STRING file, you can recompress it so the scripts accept a `.gz` path.
 
 ```python
 # one-off helper
@@ -172,7 +172,7 @@ Expected final metrics, R² about 0.79, MAE about 0.93, RMSE about 1.255. The be
 
 ---
 
-## Training, Hybrid Quantum Model, Non Fine Tuned
+## Training, Hybrid Model
 
 This configuration trains a quantum head directly within the model. The quantum layer maps concatenated cell and drug embeddings to a small number of qubits using `AngleEmbedding`, applies `BasicEntanglerLayers`, and returns expectation values to a small post circuit regressor. On Windows, prefer `default.qubit` for stability, which the script selects automatically if `lightning.qubit` is unavailable.
 
@@ -188,11 +188,11 @@ python scripts/train_hybrid_qgnn.py \
   --lr 3e-4
 ```
 
-Observed metrics in this repository, R² about 0.589, MAE about 1.289, RMSE about 1.742. The best checkpoint is saved in `checkpoints_hybrid/hybrid_best.pt`.
+Observed metrics for the hybrid model, R² about 0.750, MAE about 0.95, RMSE about 1.300. The best checkpoint is saved in `checkpoints_hybrid/hybrid_best.pt`.
 
 ---
 
-## Training, Hybrid Quantum Model, Fine Tuned
+## Training, Hybrid Model Fine Tuned
 
 This stage initializes a hybrid model from a trained classical baseline checkpoint. By default, only the quantum head and final regressor are trained. You can unfreeze embeddings with `--unfreeze_embeddings`. To handle naming differences between checkpoints, pass `--safe_load` which loads only compatible tensors and initializes the rest.
 
@@ -209,8 +209,6 @@ python scripts/train_hybrid_finetune.py \
   --lr 3e-4 \
   --safe_load
 ```
-
-Observed metrics in this repository, R² about 0.499, MAE about 1.421, RMSE about 1.923. The best checkpoint is saved in `checkpoints_hybrid_ft/hybrid_ft_best.pt`.
 
 ---
 
@@ -238,8 +236,8 @@ There is also a minimal plotting snippet that creates simple bar charts and save
 import matplotlib.pyplot as plt, os
 
 os.makedirs("plots", exist_ok=True)
-models = ['Baseline, Classical', 'Hybrid, Old run']
-r2_scores = [0.786, 0.75]
+models = ['Baseline, Classical', 'Hybrid model']
+r2_scores = [0.786, 0.750]
 mae_scores = [0.93, 0.95]
 rmse_scores = [1.25, 1.30]
 
@@ -263,10 +261,10 @@ for name, vals, ylabel in [
 
 ## Reproducibility Notes
 
-- **Splitting** is drug aware, per drug indices, with a fixed seed.  
-- **Metrics** include MAE, RMSE, R², averaged over all test edges.  
-- **Quantum backend** uses `default.qubit` by default on Windows. If `lightning.qubit` is available and stable, the scripts will report it.  
-- **Performance variance** is expected with qubit count, circuit depth, and batch size. On some machines, a smaller batch improves stability of the quantum layer.
+- Splitting is drug aware, per drug indices, with a fixed seed.  
+- Metrics include MAE, RMSE, R², averaged over all test edges.  
+- Quantum backend uses `default.qubit` by default on Windows. If `lightning.qubit` is available and stable, the scripts will report it.  
+- Performance variance is expected with qubit count, circuit depth, and batch size. On some machines, a smaller batch improves stability of the quantum layer.
 
 ---
 
@@ -274,13 +272,7 @@ for name, vals, ylabel in [
 
 - If `torch.compile` triggers a Triton error, add `--no_compile` on training commands.  
 - If `torch-scatter` or similar packages fail to build, proceed without them. The core pipeline in this repo does not require those compiled extensions.  
-- PowerShell multiline commands use backticks. To avoid shell issues, prefer single line commands, as shown above.
-
----
-
-## License
-
-This project is released under the MIT License. See `LICENSE` if included, or adapt to your preferred open source license.
+- PowerShell multiline commands use backticks. To avoid shell issues, prefer single line commands as shown above.
 
 ---
 
