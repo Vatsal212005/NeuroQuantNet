@@ -6,7 +6,6 @@ The project provides three trained configurations:
 1. **Classical baseline**, embeddings for cells and drugs, followed by a compact MLP regressor.  
 2. **Hybrid model**, classical embeddings trained jointly with a quantum head that replaces the classical regressor.  
 
-No future scope section is included, by request.
 
 ---
 
